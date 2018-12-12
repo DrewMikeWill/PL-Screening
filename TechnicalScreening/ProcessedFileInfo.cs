@@ -7,8 +7,8 @@ namespace TechnicalScreening
 {
     public class ProcessedFileInfo
     {
-        public BlockingCollection<string> LinesFound { get; set; }
+        public int NumLinesFound { get; set; }
 
-        public int SearchStringOccurrences { get; set; }
+        public int NumOccurrences { get; set; }
     }
 }

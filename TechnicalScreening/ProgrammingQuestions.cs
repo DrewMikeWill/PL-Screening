@@ -13,6 +13,7 @@ namespace TechnicalScreening
 {
     public static class ProgrammingQuestions
     {
+
         /// <summary>
         /// Takes two strings and does the "perfect shuffle" with those two strings, alternating characters from the two input strings. 
         /// </summary>
@@ -69,31 +70,32 @@ namespace TechnicalScreening
         /// <param name="destinationFilename">Specified file to output all lines containing the specified string searched for</param>
         public static void ProcessAndReportFiles(string sourceDirectoryPath, string searchString,
             string destinationFilename)
-        {
+        {            
             var numLinesFound = 0;
             var numOccurrences = 0;
+            object writerLock = new Object();
             var filesInSourceDirectory = Directory.GetFiles(sourceDirectoryPath);
             var numFiles = filesInSourceDirectory.Length;
-            var listOfFileInfo = filesInSourceDirectory.Select(fileName => ProcessFile(fileName, searchString, destinationFilename)).ToList();
+            var listOfFileInfo = filesInSourceDirectory.Select(fileName => ProcessFile(fileName, searchString, destinationFilename, writerLock)).ToArray();
+            Task.WaitAll(listOfFileInfo);
 
-            foreach (var tuple in listOfFileInfo)
-            {
-                numLinesFound += tuple.Item1;
-                numOccurrences += tuple.Item2;
-            }
+            //foreach (var tuple in listOfFileInfo)
+            //{
+            //    numLinesFound += tuple.Item1;
+            //    numOccurrences += tuple.Item2;
+            //}
 
             Console.WriteLine($"Total number of files searched: {numFiles}");
             Console.WriteLine($"Total number of lines containing the string searched for: {numLinesFound}");
-            Console.WriteLine($"Total number of times the string searched occured: {numOccurrences}");
+            Console.WriteLine($"Total number of times the string searched occured: {numOccurrences}\n");
         }
 
-        private static Tuple<int , int> ProcessFile(string fileName, string searchString, string destinationFilename)
+        private static async Task<ProcessedFileInfo> ProcessFile(string fileName, string searchString, string destinationFilename, object writerLock )
         {
-            return Task<Tuple<int,int>>.Factory.StartNew(() =>
+            return await Task.Run<ProcessedFileInfo>(() =>
             {
                 var linesFound = new Collection<string>();
-                var numLines = 0;
-                var numOccurrences = 0;
+                var fileStats = new ProcessedFileInfo();
                 using (var reader = new StreamReader(fileName))
                 {
                     string line;
@@ -101,25 +103,27 @@ namespace TechnicalScreening
                     {
                         if (!line.Contains(searchString)) continue;
                         linesFound.Add(line);
-                        numLines += 1;
-                        numOccurrences += Regex.Matches(line, searchString).Count;
+                        fileStats.NumLinesFound += 1;
+                        fileStats.NumOccurrences += Regex.Matches(line, searchString).Count;
                     }
                     reader.Close();
                 }
 
-                var writerLock = new ReaderWriterLockSlim();
-                writerLock.EnterWriteLock();
-                using (var writer = File.AppendText(destinationFilename))
+
+                lock (writerLock)
                 {
-                    foreach (var line in linesFound)
+                    using (var writer = File.AppendText(destinationFilename))
                     {
-                        writer.WriteLine(line);
+                        foreach (var line in linesFound)
+                        {
+                            writer.WriteLine(line);
+                        }
+                        writer.Close();
                     }
-                    writer.Close();
                 }
-                writerLock.ExitWriteLock();
-                return new Tuple<int,int>(numLines, numOccurrences);
-            }).Result;
+
+                return fileStats;
+            });
         }
     }
 }

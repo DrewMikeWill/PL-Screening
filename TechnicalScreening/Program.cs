@@ -7,7 +7,7 @@ namespace TechnicalScreening
     {
         static void Main(string[] args)
         {
-            ProgrammingQuestions.ProcessAndReportFiles("E:\\Development\\PL\\TestDirectory", "test", "E:\\Development\\PL\\TestDirectory\\testOutput.txt");
+            ProgrammingQuestions.ProcessAndReportFiles("E:\\Development\\PL\\TestDirectory", "test", "E:\\Development\\PL\\testOutput.txt");
 
             string firstTestString = ProgrammingQuestions.Interleave("abc", "12345");
             string secondTestString = ProgrammingQuestions.Interleave("abcdef", "123");
