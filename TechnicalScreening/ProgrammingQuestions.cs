@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace TechnicalScreening
 {
@@ -52,10 +56,38 @@ namespace TechnicalScreening
             return finalString;
         }
 
-        public static void searchFiles(string sourceDirectoryPath, string searchString,
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sourceDirectoryPath"></param>
+        /// <param name="searchString"></param>
+        /// <param name="destinationFilename"></param>
+        public static void searchAndProcessFiles(string sourceDirectoryPath, string searchString,
             string destinationFilename)
         {
+            string[] filesInSourceDirectory = Directory.GetFiles(sourceDirectoryPath);
+            var totalSearchStringOccurences = 0;
+            var linesFound = new BlockingCollection<string>();
 
+            foreach (var fileName in filesInSourceDirectory)
+            {
+                Task.Run(() =>
+                {
+                    using (var reader = new StreamReader(fileName))
+                    {
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            if (line.Contains(searchString))
+                            {
+                                linesFound.Add(line);
+                                totalSearchStringOccurences += Regex.Matches(line, searchString).Count;
+                            }
+                        }
+                        linesFound.CompleteAdding();
+                    }
+                });
+            }
         }
     }
 }
