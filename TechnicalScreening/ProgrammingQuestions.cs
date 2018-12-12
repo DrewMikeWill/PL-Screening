@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TechnicalScreening
@@ -57,37 +59,67 @@ namespace TechnicalScreening
         }
 
         /// <summary>
-        /// 
+        /// Searches all files within a specified directory. Finds all occurrences of a specified string within the files searched.
+        /// Outputs all lines containing the specified string into specified destination file.
+        /// Reports total files processed, number of lines where the specified string was found, and the
+        /// number of occurrences of the specified string to the console.
         /// </summary>
-        /// <param name="sourceDirectoryPath"></param>
-        /// <param name="searchString"></param>
-        /// <param name="destinationFilename"></param>
-        public static void searchAndProcessFiles(string sourceDirectoryPath, string searchString,
+        /// <param name="sourceDirectoryPath">Specified directory to search files within</param>
+        /// <param name="searchString">Specified string to find within the files searched</param>
+        /// <param name="destinationFilename">Specified file to output all lines containing the specified string searched for</param>
+        public static void ProcessAndReportFiles(string sourceDirectoryPath, string searchString,
             string destinationFilename)
         {
-            string[] filesInSourceDirectory = Directory.GetFiles(sourceDirectoryPath);
-            var totalSearchStringOccurences = 0;
-            var linesFound = new BlockingCollection<string>();
+            var numLinesFound = 0;
+            var numOccurrences = 0;
+            var filesInSourceDirectory = Directory.GetFiles(sourceDirectoryPath);
+            var numFiles = filesInSourceDirectory.Length;
+            var listOfFileInfo = filesInSourceDirectory.Select(fileName => ProcessFile(fileName, searchString, destinationFilename)).ToList();
 
-            foreach (var fileName in filesInSourceDirectory)
+            foreach (var tuple in listOfFileInfo)
             {
-                Task.Run(() =>
-                {
-                    using (var reader = new StreamReader(fileName))
-                    {
-                        string line;
-                        while ((line = reader.ReadLine()) != null)
-                        {
-                            if (line.Contains(searchString))
-                            {
-                                linesFound.Add(line);
-                                totalSearchStringOccurences += Regex.Matches(line, searchString).Count;
-                            }
-                        }
-                        linesFound.CompleteAdding();
-                    }
-                });
+                numLinesFound += tuple.Item1;
+                numOccurrences += tuple.Item2;
             }
+
+            Console.WriteLine($"Total number of files searched: {numFiles}");
+            Console.WriteLine($"Total number of lines containing the string searched for: {numLinesFound}");
+            Console.WriteLine($"Total number of times the string searched occured: {numOccurrences}");
+        }
+
+        private static Tuple<int , int> ProcessFile(string fileName, string searchString, string destinationFilename)
+        {
+            return Task<Tuple<int,int>>.Factory.StartNew(() =>
+            {
+                var linesFound = new Collection<string>();
+                var numLines = 0;
+                var numOccurrences = 0;
+                using (var reader = new StreamReader(fileName))
+                {
+                    string line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (!line.Contains(searchString)) continue;
+                        linesFound.Add(line);
+                        numLines += 1;
+                        numOccurrences += Regex.Matches(line, searchString).Count;
+                    }
+                    reader.Close();
+                }
+
+                var writerLock = new ReaderWriterLockSlim();
+                writerLock.EnterWriteLock();
+                using (var writer = File.AppendText(destinationFilename))
+                {
+                    foreach (var line in linesFound)
+                    {
+                        writer.WriteLine(line);
+                    }
+                    writer.Close();
+                }
+                writerLock.ExitWriteLock();
+                return new Tuple<int,int>(numLines, numOccurrences);
+            }).Result;
         }
     }
 }
