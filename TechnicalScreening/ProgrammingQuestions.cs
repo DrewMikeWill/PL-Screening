@@ -5,7 +5,7 @@ using System.Text;
 
 namespace TechnicalScreening
 {
-    internal static class ProgrammingQuestions
+    public static class ProgrammingQuestions
     {
         /// <summary>
         /// Takes two strings and does the "perfect shuffle" with those two strings, alternating characters from the two input strings. 
@@ -13,41 +13,49 @@ namespace TechnicalScreening
         /// <param name="firstString">First character of this string will assume the first position in the string returned</param>
         /// <param name="secondString">First character of this string will take the second position in the string returned</param>
         /// <returns>String that is the product of the two parameters interleaved</returns>
-        internal static string Interleave(string firstString, string secondString)
+        public static string Interleave(string firstString, string secondString)
         {
-            if (firstString == null && secondString == null)
+            if ( string.IsNullOrEmpty(firstString) && string.IsNullOrEmpty(secondString))
                 return null;
-            if (firstString == null)
+            if (string.IsNullOrEmpty(firstString))
                 return secondString;
-            if (secondString == null)
+            if (string.IsNullOrEmpty(secondString))
                 return firstString;
-
-            int firstStringLength = firstString.Length, secondStringLength = secondString.Length;
-            int count = 0;
-            string finalString = null;
-            List<char> finalStringChars = new List<char>();
+            
+            var firstStringLength = firstString.Length;
+            var secondStringLength = secondString.Length;
+            var count = 0;
+            var finalStringBuilder = new StringBuilder(firstStringLength + secondStringLength);
 
             if (firstStringLength <= secondStringLength)
             {
                 while (count < firstStringLength)
                 {
-                    finalStringChars.Add(firstString[count]);
-                    finalStringChars.Add(secondString[count]);
+                    finalStringBuilder.Append(firstString[count]);
+                    finalStringBuilder.Append(secondString[count]);
                     ++count;
                 }
-                finalString = string.Concat(string.Join(null, finalStringChars.ToArray()), secondString.Substring(count));
+                finalStringBuilder.Append(secondString.Substring(count));
             }
             else
             {
                 while (count < secondStringLength)
                 {
-                    finalStringChars.Add(firstString[count]);
-                    finalStringChars.Add(secondString[count]);
+                    finalStringBuilder.Append(firstString[count]);
+                    finalStringBuilder.Append(secondString[count]);
                     ++count;
                 }
-                finalString = string.Concat(string.Join(null, finalStringChars.ToArray()), firstString.Substring(count));
+                finalStringBuilder.Append( firstString.Substring(count));
             }
+
+            var finalString = finalStringBuilder.ToString();
             return finalString;
+        }
+
+        public static void searchFiles(string sourceDirectoryPath, string searchString,
+            string destinationFilename)
+        {
+
         }
     }
 }
