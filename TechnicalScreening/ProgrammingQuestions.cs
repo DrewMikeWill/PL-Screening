@@ -68,22 +68,17 @@ namespace TechnicalScreening
         /// <param name="sourceDirectoryPath">Specified directory to search files within</param>
         /// <param name="searchString">Specified string to find within the files searched</param>
         /// <param name="destinationFilename">Specified file to output all lines containing the specified string searched for</param>
-        public static void ProcessAndReportFiles(string sourceDirectoryPath, string searchString,
+        public static async void ProcessAndReportFiles(string sourceDirectoryPath, string searchString,
             string destinationFilename)
-        {            
-            var numLinesFound = 0;
-            var numOccurrences = 0;
+        {                  
             object writerLock = new Object();
             var filesInSourceDirectory = Directory.GetFiles(sourceDirectoryPath);
-            var numFiles = filesInSourceDirectory.Length;
-            var listOfFileInfo = filesInSourceDirectory.Select(fileName => ProcessFile(fileName, searchString, destinationFilename, writerLock)).ToArray();
-            Task.WaitAll(listOfFileInfo);
+            var numFiles = filesInSourceDirectory.Length;           
+            var listOfProcessFileTasks = filesInSourceDirectory.Select(fileName => ProcessFile(fileName, searchString, destinationFilename, writerLock)).ToArray();
+            var listOfFileInfo = await Task.WhenAll(listOfProcessFileTasks);
+            var numLinesFound = listOfFileInfo.Sum(x => x.NumLinesFound);
+            var numOccurrences = listOfFileInfo.Sum(x => x.NumOccurrences);
 
-            //foreach (var tuple in listOfFileInfo)
-            //{
-            //    numLinesFound += tuple.Item1;
-            //    numOccurrences += tuple.Item2;
-            //}
 
             Console.WriteLine($"Total number of files searched: {numFiles}");
             Console.WriteLine($"Total number of lines containing the string searched for: {numLinesFound}");
@@ -106,7 +101,6 @@ namespace TechnicalScreening
                         fileStats.NumLinesFound += 1;
                         fileStats.NumOccurrences += Regex.Matches(line, searchString).Count;
                     }
-                    reader.Close();
                 }
 
 
@@ -118,10 +112,8 @@ namespace TechnicalScreening
                         {
                             writer.WriteLine(line);
                         }
-                        writer.Close();
                     }
                 }
-
                 return fileStats;
             });
         }
